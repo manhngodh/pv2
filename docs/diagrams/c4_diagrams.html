@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passivbot v2.0 - C4 Model Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            background-size: 50px 50px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 3em;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header .subtitle {
+            margin: 15px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .nav {
+            background: #34495e;
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 30px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .level-section {
+            margin-bottom: 60px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: white;
+        }
+        
+        .level-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .level-header h2 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        
+        .level-description {
+            color: #6c757d;
+            font-size: 1.1em;
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        .diagram-content {
+            padding: 30px;
+            text-align: center;
+            background: #fafafa;
+        }
+        
+        .mermaid {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        .principles-section {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 40px;
+        }
+        
+        .principles-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+        
+        .principle-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .principle-item h4 {
+            margin: 0 0 10px 0;
+            color: #28a745;
+            font-size: 1.2em;
+        }
+        
+        .principle-item p {
+            margin: 0;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .nav {
+                padding: 15px 20px;
+            }
+            
+            .nav a {
+                display: block;
+                margin: 5px 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Passivbot v2.0</h1>
+            <p class="subtitle">C4 Model Architecture - System Design at Scale</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#context">System Context</a>
+            <a href="#container">Containers</a>
+            <a href="#component">Components</a>
+            <a href="#code">Code Structure</a>
+            <a href="#deployment">Deployment</a>
+            <a href="#dataflow">Data Flow</a>
+            <a href="#security">Security</a>
+            <a href="#principles">Principles</a>
+        </div>
+
+        <div class="content">
+            <div id="context" class="level-section">
+                <div class="level-header">
+                    <h2>Level 1: System Context</h2>
+                    <p class="level-description">Shows how Passivbot fits into the overall environment and interacts with external systems and users.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Context
+    title System Context Diagram - Passivbot Trading Bot
+
+    Person(trader, "Crypto Trader", "User who configures and monitors the trading bot")
+    
+    System(passivbot, "Passivbot v2.0", "Automated cryptocurrency trading bot with grid and DCA strategies")
+    
+    System_Ext(binance, "Binance Exchange", "Cryptocurrency exchange API for trading")
+    System_Ext(bybit, "Bybit Exchange", "Cryptocurrency exchange API for trading")
+    System_Ext(telegram, "Telegram", "Notification service for alerts")
+    System_Ext(discord, "Discord", "Notification service for alerts")
+    
+    Rel(trader, passivbot, "Configures strategies, monitors performance", "CLI/Web UI")
+    Rel(passivbot, binance, "Places orders, gets market data", "REST API/WebSocket")
+    Rel(passivbot, bybit, "Places orders, gets market data", "REST API/WebSocket")
+    Rel(passivbot, telegram, "Sends notifications", "Bot API")
+    Rel(passivbot, discord, "Sends notifications", "Webhook")
+    
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+                    </div>
+                </div>
+            </div>
+
+            <div id="container" class="level-section">
+                <div class="level-header">
+                    <h2>Level 2: Container Diagram</h2>
+                    <p class="level-description">Shows the major containers (applications, databases, etc.) that make up the Passivbot system.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Container
+    title Container Diagram - Passivbot v2.0
+
+    Person(trader, "Crypto Trader", "Configures and monitors trading")
+
+    System_Boundary(c1, "Passivbot System") {
+        Container(cli, "CLI Application", "Python/Typer", "Command-line interface for bot management")
+        Container(web, "Web Application", "FastAPI/React", "Web dashboard for monitoring and control")
+        Container(bot, "Trading Bot Core", "Python/AsyncIO", "Main trading engine with strategies")
+        Container(db, "Database", "SQLite/PostgreSQL", "Stores trading history, positions, and configurations")
+        Container(config, "Configuration", "JSON/YAML", "Trading strategies and risk parameters")
+    }
+
+    System_Ext(exchanges, "Crypto Exchanges", "External trading APIs")
+    System_Ext(notifications, "Notification Services", "Telegram, Discord, Email")
+
+    Rel(trader, cli, "Manages bot", "Commands")
+    Rel(trader, web, "Monitors performance", "HTTPS")
+    Rel(cli, bot, "Controls bot lifecycle", "Direct calls")
+    Rel(web, bot, "Gets status, controls bot", "API calls")
+    Rel(bot, db, "Reads/writes trading data", "SQL")
+    Rel(bot, config, "Reads configuration", "File I/O")
+    Rel(bot, exchanges, "Trading operations", "REST/WebSocket")
+    Rel(bot, notifications, "Sends alerts", "API calls")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+                    </div>
+                </div>
+            </div>
+
+            <div id="component" class="level-section">
+                <div class="level-header">
+                    <h2>Level 3: Component Diagram</h2>
+                    <p class="level-description">Shows the internal components of the main trading bot container and their relationships.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Component
+    title Component Diagram - Trading Bot Core
+
+    Container(web, "Web Application", "FastAPI", "Web dashboard")
+    Container(cli, "CLI Application", "Python/Typer", "Command line interface")
+    Container(db, "Database", "SQLite/PostgreSQL", "Data persistence")
+
+    Container_Boundary(c1, "Trading Bot Core") {
+        Component(bot_controller, "Bot Controller", "PassivBot Class", "Main orchestrator managing bot lifecycle")
+        Component(config_manager, "Configuration Manager", "Pydantic Models", "Loads and validates configuration")
+        Component(risk_manager, "Risk Manager", "Risk Controller", "Monitors drawdown, position sizes, and stops")
+        
+        Component(exchange_manager, "Exchange Manager", "Exchange Registry", "Manages exchange connections and operations")
+        Component(binance_impl, "Binance Implementation", "BinanceExchange", "Binance-specific API integration")
+        Component(bybit_impl, "Bybit Implementation", "BybitExchange", "Bybit-specific API integration")
+        
+        Component(strategy_manager, "Strategy Manager", "Strategy Registry", "Orchestrates trading strategies")
+        Component(grid_strategy, "Grid Strategy", "GridStrategy Class", "Grid trading algorithm implementation")
+        Component(dca_strategy, "DCA Strategy", "DCAStrategy Class", "Dollar cost averaging algorithm")
+        
+        Component(order_manager, "Order Manager", "Order Controller", "Manages order lifecycle and state")
+        Component(position_tracker, "Position Tracker", "Position Monitor", "Tracks open positions and P&L")
+        Component(market_data, "Market Data Handler", "Data Processor", "Processes real-time market data")
+        Component(notification_service, "Notification Service", "Alert Manager", "Sends notifications and alerts")
+    }
+
+    System_Ext(exchanges, "External Exchanges", "Trading APIs")
+    System_Ext(notifications, "External Notifications", "Telegram/Discord")
+
+    Rel(cli, bot_controller, "Controls", "Method calls")
+    Rel(web, bot_controller, "Status/Control", "API")
+    Rel(bot_controller, config_manager, "Loads config", "Pydantic")
+    Rel(bot_controller, risk_manager, "Risk checks", "Validation")
+    Rel(bot_controller, exchange_manager, "Exchange ops", "Interface")
+    Rel(bot_controller, strategy_manager, "Execute strategies", "Strategy calls")
+    
+    Rel(exchange_manager, binance_impl, "Binance calls", "Implementation")
+    Rel(exchange_manager, bybit_impl, "Bybit calls", "Implementation")
+    Rel(binance_impl, exchanges, "API calls", "REST/WS")
+    Rel(bybit_impl, exchanges, "API calls", "REST/WS")
+    
+    Rel(strategy_manager, grid_strategy, "Execute grid", "Strategy pattern")
+    Rel(strategy_manager, dca_strategy, "Execute DCA", "Strategy pattern")
+    Rel(grid_strategy, order_manager, "Place orders", "Order ops")
+    Rel(dca_strategy, order_manager, "Place orders", "Order ops")
+    
+    Rel(order_manager, exchange_manager, "Order operations", "Exchange interface")
+    Rel(position_tracker, exchange_manager, "Position updates", "Data sync")
+    Rel(market_data, exchange_manager, "Market updates", "WebSocket")
+    Rel(notification_service, notifications, "Send alerts", "External API")
+    
+    Rel(bot_controller, db, "Persist data", "ORM")
+    Rel(order_manager, db, "Save orders", "SQL")
+    Rel(position_tracker, db, "Save positions", "SQL")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")
+                    </div>
+                </div>
+            </div>
+
+            <div id="code" class="level-section">
+                <div class="level-header">
+                    <h2>Level 4: Code Diagram</h2>
+                    <p class="level-description">Shows the internal structure of the Grid Strategy component at the code level.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Component
+    title Code Diagram - Grid Strategy Component
+
+    Component_Ext(strategy_manager, "Strategy Manager", "Strategy orchestrator")
+    Component_Ext(order_manager, "Order Manager", "Order operations")
+    Component_Ext(exchange_manager, "Exchange Manager", "Market data and trading")
+
+    Container_Boundary(c1, "Grid Strategy") {
+        Component(grid_strategy, "GridStrategy", "Main Class", "Grid trading strategy implementation")
+        Component(grid_calculator, "Grid Calculator", "Helper Class", "Calculates grid levels and spacing")
+        Component(order_tracker, "Order Tracker", "State Manager", "Tracks buy/sell orders in grid")
+        Component(rebalancer, "Grid Rebalancer", "Logic Handler", "Handles grid rebalancing logic")
+        Component(fill_handler, "Fill Handler", "Event Handler", "Processes order fills and places opposite orders")
+        Component(level_manager, "Level Manager", "Grid Controller", "Ensures orders at all grid levels")
+    }
+
+    Rel(strategy_manager, grid_strategy, "execute()", "Strategy interface")
+    Rel(grid_strategy, grid_calculator, "calculate_grid_levels()", "Math operations")
+    Rel(grid_strategy, order_tracker, "track_orders()", "State management")
+    Rel(grid_strategy, rebalancer, "check_rebalancing()", "Rebalance logic")
+    Rel(grid_strategy, fill_handler, "handle_filled_orders()", "Event processing")
+    Rel(grid_strategy, level_manager, "ensure_grid_coverage()", "Grid maintenance")
+    
+    Rel(grid_strategy, order_manager, "place_order(), cancel_order()", "Order operations")
+    Rel(grid_strategy, exchange_manager, "get_market_data(), get_balance()", "Market data")
+    
+    Rel(fill_handler, order_manager, "place_opposite_order()", "New orders")
+    Rel(rebalancer, order_manager, "cancel_all_orders()", "Grid reset")
+    Rel(level_manager, order_manager, "place_grid_order()", "Missing orders")
+
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+                    </div>
+                </div>
+            </div>
+
+            <div id="deployment" class="level-section">
+                <div class="level-header">
+                    <h2>Deployment Diagram</h2>
+                    <p class="level-description">Shows how Passivbot components are deployed across different environments and infrastructure.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Deployment
+    title Deployment Diagram - Passivbot v2.0
+
+    Deployment_Node(user_machine, "User's Computer", "Windows/Mac/Linux") {
+        Container(cli_local, "Passivbot CLI", "Python", "Local bot instance")
+        Container(config_local, "Configuration Files", "JSON/YAML", "Trading parameters")
+    }
+
+    Deployment_Node(vps, "VPS/Cloud Server", "Ubuntu 22.04") {
+        Container(bot_prod, "Passivbot Service", "Python + SystemD", "Production bot instance")
+        Container(web_prod, "Web Dashboard", "FastAPI + Nginx", "Monitoring interface")
+        Container(db_prod, "Database", "PostgreSQL", "Trading data storage")
+        Container(logs, "Log Files", "Structured Logs", "System monitoring")
+    }
+
+    Deployment_Node(exchanges_cloud, "Exchange APIs", "Cloud Infrastructure") {
+        Container(binance_api, "Binance API", "REST/WebSocket", "Trading operations")
+        Container(bybit_api, "Bybit API", "REST/WebSocket", "Trading operations")
+    }
+
+    Deployment_Node(notification_services, "Notification Services", "External APIs") {
+        Container(telegram_api, "Telegram Bot API", "HTTPS", "Alert notifications")
+        Container(discord_webhook, "Discord Webhook", "HTTPS", "Alert notifications")
+    }
+
+    Rel(cli_local, config_local, "Reads", "File I/O")
+    Rel(bot_prod, db_prod, "Stores data", "PostgreSQL protocol")
+    Rel(web_prod, bot_prod, "API calls", "HTTP/JSON")
+    Rel(bot_prod, logs, "Writes", "File I/O")
+    
+    Rel(cli_local, binance_api, "Trading", "HTTPS/WSS")
+    Rel(bot_prod, binance_api, "Trading", "HTTPS/WSS")
+    Rel(cli_local, bybit_api, "Trading", "HTTPS/WSS")
+    Rel(bot_prod, bybit_api, "Trading", "HTTPS/WSS")
+    
+    Rel(bot_prod, telegram_api, "Notifications", "HTTPS")
+    Rel(bot_prod, discord_webhook, "Notifications", "HTTPS")
+
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+                    </div>
+                </div>
+            </div>
+
+            <div id="dataflow" class="level-section">
+                <div class="level-header">
+                    <h2>Data Flow Diagram</h2>
+                    <p class="level-description">Shows how data flows through the system during trading operations from input to output.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+flowchart TB
+    subgraph "External Data Sources"
+        Exchange[Exchange APIs<br/>Market Data & Orders]
+        Config[Configuration Files<br/>Strategy Parameters]
+    end
+
+    subgraph "Data Ingestion"
+        WebSocket[WebSocket Handler<br/>Real-time Data]
+        REST[REST API Handler<br/>Account Data]
+        ConfigLoader[Config Loader<br/>Pydantic Validation]
+    end
+
+    subgraph "Core Processing"
+        MarketData[Market Data Processor<br/>Price, Volume, Orderbook]
+        AccountData[Account Data Manager<br/>Balances, Positions]
+        RiskEngine[Risk Engine<br/>Validation & Limits]
+        StrategyEngine[Strategy Engine<br/>Trading Logic]
+    end
+
+    subgraph "Decision Making"
+        GridLogic[Grid Strategy Logic<br/>Level Calculation]
+        DCALogic[DCA Strategy Logic<br/>Safety Orders]
+        OrderLogic[Order Decision Engine<br/>Buy/Sell Signals]
+    end
+
+    subgraph "Order Execution"
+        OrderManager[Order Manager<br/>Placement & Tracking]
+        ExchangeAPI[Exchange API Client<br/>Order Submission]
+    end
+
+    subgraph "Data Persistence"
+        Database[(Database<br/>Trading History)]
+        Logs[Log Files<br/>Audit Trail]
+    end
+
+    subgraph "Monitoring & Alerts"
+        WebDash[Web Dashboard<br/>Real-time Monitoring]
+        Notifications[Notification Service<br/>Alerts & Updates]
+    end
+
+    Exchange --> WebSocket
+    Exchange --> REST
+    Config --> ConfigLoader
+
+    WebSocket --> MarketData
+    REST --> AccountData
+    ConfigLoader --> StrategyEngine
+
+    MarketData --> RiskEngine
+    AccountData --> RiskEngine
+    RiskEngine --> StrategyEngine
+
+    StrategyEngine --> GridLogic
+    StrategyEngine --> DCALogic
+    GridLogic --> OrderLogic
+    DCALogic --> OrderLogic
+
+    OrderLogic --> OrderManager
+    OrderManager --> ExchangeAPI
+    ExchangeAPI --> Exchange
+
+    OrderManager --> Database
+    MarketData --> Database
+    AccountData --> Database
+    StrategyEngine --> Logs
+
+    Database --> WebDash
+    OrderManager --> WebDash
+    RiskEngine --> Notifications
+    OrderManager --> Notifications
+
+    style Exchange fill:#e1f5fe
+    style Database fill:#f3e5f5
+    style RiskEngine fill:#ffebee
+    style StrategyEngine fill:#e8f5e8
+                    </div>
+                </div>
+            </div>
+
+            <div id="security" class="level-section">
+                <div class="level-header">
+                    <h2>Security Architecture</h2>
+                    <p class="level-description">Shows security boundaries, data protection measures, and authentication flows.</p>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+C4Container
+    title Security Architecture - Passivbot v2.0
+
+    Person(trader, "Trader", "System operator")
+
+    System_Boundary(secure_zone, "Secure Zone - Private Network") {
+        Container(cli, "CLI Interface", "Local Access", "Direct system access with full permissions")
+        
+        Container_Boundary(app_layer, "Application Layer") {
+            Container(bot, "Trading Bot", "Python Process", "Core trading logic with API credentials")
+            Container(web, "Web Dashboard", "FastAPI + Auth", "Monitoring interface with JWT authentication")
+        }
+        
+        Container_Boundary(data_layer, "Data Layer") {
+            Container(db, "Database", "Encrypted Storage", "Trading data with encryption at rest")
+            Container(config, "Configuration", "Encrypted Files", "API keys and sensitive parameters")
+            Container(logs, "Audit Logs", "Secured Files", "System activity tracking")
+        }
+    }
+
+    System_Boundary(dmz, "DMZ - Public Access") {
+        Container(reverse_proxy, "Reverse Proxy", "Nginx + SSL", "TLS termination and rate limiting")
+    }
+
+    System_Ext(exchanges, "Exchange APIs", "External endpoints with API authentication")
+    System_Ext(notifications, "Notification Services", "External APIs with token authentication")
+
+    Rel(trader, cli, "Direct access", "Local shell")
+    Rel(trader, reverse_proxy, "HTTPS", "Web browser")
+    Rel(reverse_proxy, web, "HTTP", "Internal network")
+    
+    Rel(cli, bot, "Control commands", "Process signals")
+    Rel(web, bot, "Status queries", "Internal API")
+    
+    Rel(bot, db, "Encrypted queries", "TLS connection")
+    Rel(bot, config, "Read secrets", "File encryption")
+    Rel(bot, logs, "Audit events", "Secured writes")
+    
+    Rel(bot, exchanges, "Authenticated API", "HTTPS + Signatures")
+    Rel(bot, notifications, "Token auth", "HTTPS")
+
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")
+                    </div>
+                </div>
+            </div>
+
+            <div id="principles" class="principles-section">
+                <h3>🏛️ Key Architecture Principles</h3>
+                
+                <div class="principle-item">
+                    <h4>🔄 Separation of Concerns</h4>
+                    <p>Exchange Layer handles external APIs, Strategy Layer contains trading logic, Risk Layer manages safety, and Data Layer handles persistence.</p>
+                </div>
+                
+                <div class="principle-item">
+                    <h4>📈 Scalability</h4>
+                    <p>Async architecture for concurrent operations, modular design for easy extension, and resource management with rate limiting.</p>
+                </div>
+                
+                <div class="principle-item">
+                    <h4>🛡️ Reliability</h4>
+                    <p>Comprehensive error handling, persistent state across restarts, and circuit breakers for automatic failure recovery.</p>
+                </div>
+                
+                <div class="principle-item">
+                    <h4>🔒 Security</h4>
+                    <p>Encrypted credential storage, Pydantic validation for all data, complete audit logging, and TLS encryption for communications.</p>
+                </div>
+                
+                <div class="principle-item">
+                    <h4>👁️ Observability</h4>
+                    <p>Structured JSON logging, performance metrics collection, real-time monitoring dashboard, and multi-channel alerting.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#f8f9fa',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#dee2e6',
+                lineColor: '#6c757d',
+                secondaryColor: '#e9ecef',
+                tertiaryColor: '#ffffff',
+                background: '#ffffff',
+                mainBkg: '#ffffff',
+                secondBkg: '#f8f9fa',
+                tertiaryBkg: '#e9ecef'
+            },
+            c4: {
+                diagramMarginX: 50,
+                diagramMarginY: 50,
+                c4ShapeMargin: 50,
+                c4ShapePadding: 20
+            }
+        });
+        
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('.nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            });
+        });
+        
+        // Highlight current section in navigation
+        window.addEventListener('scroll', () => {
+            let current = '';
+            document.querySelectorAll('.level-section, .principles-section').forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            document.querySelectorAll('.nav a').forEach(link => {
+                link.style.background = '';
+                if (link.getAttribute('href') === '#' + current) {
+                    link.style.background = 'rgba(255,255,255,0.2)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passivbot v2.0 Architecture Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .diagram-section {
+            margin-bottom: 40px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .diagram-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .diagram-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.3em;
+        }
+        .diagram-content {
+            padding: 20px;
+            text-align: center;
+        }
+        .mermaid {
+            background: white;
+        }
+        .nav {
+            background: #34495e;
+            padding: 15px 30px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Passivbot v2.0</h1>
+            <p>Architecture & Logic Flow Diagrams</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#architecture">Architecture</a>
+            <a href="#lifecycle">Bot Lifecycle</a>
+            <a href="#config">Configuration</a>
+            <a href="#exchange">Exchange Layer</a>
+            <a href="#grid">Grid Strategy</a>
+            <a href="#dca">DCA Strategy</a>
+            <a href="#risk">Risk Management</a>
+            <a href="#data">Data Models</a>
+        </div>
+
+        <div class="content">
+            <div id="architecture" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>1. System Architecture Overview</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+graph TB
+    CLI[CLI Interface<br/>typer + rich] --> Bot[PassivBot<br/>Main Controller]
+    Config[Configuration<br/>Pydantic Models] --> Bot
+    
+    Bot --> EM[Exchange Manager]
+    Bot --> SM[Strategy Manager] 
+    Bot --> RM[Risk Manager]
+    Bot --> Web[Web Interface<br/>FastAPI]
+    
+    EM --> Binance[Binance Exchange]
+    EM --> Bybit[Bybit Exchange]
+    EM --> OKX[OKX Exchange<br/>Future]
+    
+    SM --> Grid[Grid Strategy]
+    SM --> DCA[DCA Strategy]
+    SM --> Custom[Custom Strategies<br/>Future]
+    
+    RM --> Position[Position Monitor]
+    RM --> Drawdown[Drawdown Check]
+    RM --> Stop[Emergency Stop]
+    
+    Bot --> DB[(Database<br/>SQLAlchemy)]
+    Bot --> Notify[Notifications<br/>Telegram/Discord]
+    
+    style Bot fill:#e1f5fe
+    style EM fill:#f3e5f5
+    style SM fill:#e8f5e8
+    style RM fill:#fff3e0
+                    </div>
+                </div>
+            </div>
+
+            <div id="lifecycle" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>2. Bot Lifecycle Flow</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Bot
+    participant Exchange
+    participant Strategy
+    participant Risk
+    
+    User->>CLI: passivbot run config.json
+    CLI->>Bot: create_bot(config)
+    
+    Bot->>Bot: _setup_logging()
+    Bot->>Exchange: connect()
+    Exchange-->>Bot: connection_established
+    
+    Bot->>Strategy: initialize_strategies()
+    Strategy-->>Bot: strategies_ready
+    
+    loop Main Trading Loop
+        Bot->>Bot: _update_account_data()
+        Bot->>Risk: _check_risk_management()
+        
+        alt Risk Check Passes
+            Bot->>Strategy: execute()
+            Strategy->>Exchange: place_orders()
+            Exchange-->>Strategy: order_responses
+            Strategy-->>Bot: execution_complete
+        else Risk Check Fails
+            Risk-->>Bot: risk_violation
+            Bot->>Bot: emergency_stop()
+        end
+        
+        Bot->>Bot: sleep(1s)
+    end
+    
+    User->>CLI: Ctrl+C
+    CLI->>Bot: stop()
+    Bot->>Strategy: cleanup()
+    Bot->>Exchange: disconnect()
+                    </div>
+                </div>
+            </div>
+
+            <div id="config" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>3. Configuration System Structure</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+classDiagram
+    class PassivbotConfig {
+        +LogLevel log_level
+        +bool dry_run
+        +ExchangeConfig exchange
+        +List[StrategyConfig] strategies
+        +RiskConfig risk
+        +DatabaseConfig database
+        +WebConfig web
+        +NotificationConfig notifications
+        
+        +from_file(path) PassivbotConfig
+        +save_to_file(path) void
+        +validate_strategies() void
+    }
+    
+    class ExchangeConfig {
+        +ExchangeType type
+        +str api_key
+        +str api_secret
+        +Optional[str] passphrase
+        +bool testnet
+        +int rate_limit
+    }
+    
+    class StrategyConfig {
+        +StrategyType type
+        +str symbol
+        +bool enabled
+        +Optional[GridConfig] grid_config
+        +Optional[DCAConfig] dca_config
+    }
+    
+    class GridConfig {
+        +int num_levels
+        +Decimal quantity_percentage
+        +Decimal price_spacing_percentage
+        +Optional[Decimal] upper_price
+        +Optional[Decimal] lower_price
+        +Decimal rebalance_threshold
+    }
+    
+    class DCAConfig {
+        +Decimal base_order_size
+        +Decimal safety_order_size
+        +int max_safety_orders
+        +Decimal price_deviation_percentage
+        +Decimal take_profit_percentage
+    }
+    
+    class RiskConfig {
+        +Decimal max_position_size
+        +Decimal max_total_exposure
+        +Decimal max_drawdown_percentage
+        +int max_orders_per_symbol
+        +bool emergency_stop
+    }
+    
+    PassivbotConfig --> ExchangeConfig
+    PassivbotConfig --> StrategyConfig
+    PassivbotConfig --> RiskConfig
+    StrategyConfig --> GridConfig
+    StrategyConfig --> DCAConfig
+                    </div>
+                </div>
+            </div>
+
+            <div id="exchange" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>4. Exchange Layer Architecture</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+graph TB
+    subgraph "Exchange Layer"
+        Base[BaseExchange<br/>Abstract Interface]
+        
+        subgraph "Implementations"
+            Binance[BinanceExchange]
+            Bybit[BybitExchange] 
+            OKX[OKXExchange<br/>Future]
+        end
+        
+        Registry[Exchange Registry<br/>get_exchange()]
+    end
+    
+    subgraph "Core Methods"
+        Account[Account Methods<br/>get_balances()<br/>get_positions()]
+        Orders[Order Methods<br/>place_order()<br/>cancel_order()<br/>get_orders()]
+        Market[Market Data<br/>get_market_data()<br/>get_orderbook()]
+        Trading[Trading Helpers<br/>buy_market()<br/>sell_limit()<br/>etc.]
+    end
+    
+    subgraph "External APIs"
+        BinanceAPI[Binance API<br/>REST + WebSocket]
+        BybitAPI[Bybit API<br/>REST + WebSocket]
+        OKXAPI[OKX API<br/>REST + WebSocket]
+    end
+    
+    Base --> Binance
+    Base --> Bybit
+    Base --> OKX
+    
+    Registry --> Base
+    
+    Base --> Account
+    Base --> Orders
+    Base --> Market
+    Base --> Trading
+    
+    Binance --> BinanceAPI
+    Bybit --> BybitAPI
+    OKX --> OKXAPI
+    
+    style Base fill:#e3f2fd
+    style Registry fill:#f3e5f5
+                    </div>
+                </div>
+            </div>
+
+            <div id="grid" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>5. Grid Trading Strategy Logic</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+flowchart TD
+    Start[Grid Strategy Start] --> Init{Initialized?}
+    
+    Init -->|No| GetPrice[Get Current Price]
+    GetPrice --> CalcLevels[Calculate Grid Levels]
+    CalcLevels --> PlaceOrders[Place Initial Orders]
+    PlaceOrders --> SetInit[Set Initialized = True]
+    
+    Init -->|Yes| Update[Update Market Data & Orders]
+    SetInit --> Update
+    
+    Update --> CheckFills[Check for Filled Orders]
+    
+    CheckFills --> HasFills{Orders Filled?}
+    
+    HasFills -->|Yes| ProcessFill[Process Filled Orders]
+    ProcessFill --> PlaceOpposite[Place Opposite Orders]
+    PlaceOpposite --> CheckRebalance
+    
+    HasFills -->|No| CheckRebalance[Check Rebalancing Need]
+    
+    CheckRebalance --> NeedRebalance{Price Deviation > Threshold?}
+    
+    NeedRebalance -->|Yes| CancelAll[Cancel All Orders]
+    CancelAll --> ResetGrid[Reset Grid Levels]
+    ResetGrid --> CalcLevels
+    
+    NeedRebalance -->|No| EnsureCoverage[Ensure Grid Coverage]
+    EnsureCoverage --> Wait[Wait for Next Cycle]
+    Wait --> Update
+    
+    style Start fill:#e8f5e8
+    style ProcessFill fill:#fff3e0
+    style CancelAll fill:#ffebee
+                    </div>
+                </div>
+            </div>
+
+            <div id="dca" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>6. DCA Strategy Logic</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+flowchart TD
+    Start[DCA Strategy Start] --> Init{Initialized?}
+    
+    Init -->|No| CheckBalance[Check USDT Balance]
+    CheckBalance --> PlaceBase[Place Base Order<br/>Market Buy]
+    PlaceBase --> SetEntry[Set Entry Price]
+    SetEntry --> PlaceTP[Place Take Profit Order]
+    PlaceTP --> SetInit[Set Initialized = True]
+    
+    Init -->|Yes| Update[Update Orders & Positions]
+    SetInit --> Update
+    
+    Update --> CheckBase{Base Order Filled?}
+    
+    CheckBase -->|Yes| UpdateEntry[Update Entry Price]
+    UpdateEntry --> UpdateTP[Update Take Profit]
+    UpdateTP --> CheckSafety
+    
+    CheckBase -->|No| CheckSafety[Check Safety Orders]
+    
+    CheckSafety --> SafetyFilled{Safety Order Filled?}
+    
+    SafetyFilled -->|Yes| IncSafetyCount[Increment Safety Count]
+    IncSafetyCount --> RecalcEntry[Recalculate Avg Entry]
+    RecalcEntry --> UpdateTP
+    
+    SafetyFilled -->|No| CheckTP[Check Take Profit]
+    
+    CheckTP --> TPFilled{Take Profit Filled?}
+    
+    TPFilled -->|Yes| Reset[Reset DCA State]
+    Reset --> Profit[Profit Realized]
+    Profit --> Start
+    
+    TPFilled -->|No| CheckPrice[Check Current Price]
+    
+    CheckPrice --> NeedSafety{Price Hit Safety Level?}
+    
+    NeedSafety -->|Yes| CheckCount{Safety Count < Max?}
+    CheckCount -->|Yes| PlaceSafety[Place Safety Order]
+    PlaceSafety --> Wait
+    CheckCount -->|No| Wait
+    
+    NeedSafety -->|No| CheckStopLoss{Stop Loss Enabled?}
+    
+    CheckStopLoss -->|Yes| StopLossHit{Price Hit Stop Loss?}
+    StopLossHit -->|Yes| ExecuteStop[Execute Stop Loss<br/>Market Sell All]
+    ExecuteStop --> Reset
+    
+    CheckStopLoss -->|No| Wait[Wait for Next Cycle]
+    StopLossHit -->|No| Wait
+    Wait --> Update
+    
+    style Start fill:#e8f5e8
+    style Profit fill:#e8f5e8
+    style ExecuteStop fill:#ffebee
+    style PlaceSafety fill:#fff3e0
+                    </div>
+                </div>
+            </div>
+
+            <div id="risk" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>7. Risk Management Flow</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+flowchart TD
+    Start[Risk Check Start] --> EmergencyStop{Emergency Stop<br/>Activated?}
+    
+    EmergencyStop -->|Yes| StopAll[Stop All Trading<br/>Cancel Orders]
+    StopAll --> Alert[Send Alert]
+    Alert --> End[End Trading]
+    
+    EmergencyStop -->|No| CheckDrawdown[Calculate Current Drawdown]
+    
+    CheckDrawdown --> DrawdownCalc[Drawdown = (Peak - Current) / Peak × 100]
+    
+    DrawdownCalc --> DrawdownCheck{Drawdown > Max?}
+    
+    DrawdownCheck -->|Yes| DrawdownStop[Maximum Drawdown<br/>Exceeded]
+    DrawdownStop --> StopAll
+    
+    DrawdownCheck -->|No| CheckPosition[Check Position Sizes]
+    
+    CheckPosition --> PositionLoop{For Each Position}
+    
+    PositionLoop --> CheckSize{Position > Max Size?}
+    
+    CheckSize -->|Yes| ReducePosition[Reduce Position<br/>Partial Close]
+    ReducePosition --> LogWarning[Log Warning]
+    LogWarning --> NextPosition
+    
+    CheckSize -->|No| NextPosition[Next Position]
+    NextPosition --> MorePositions{More Positions?}
+    
+    MorePositions -->|Yes| PositionLoop
+    MorePositions -->|No| CheckExposure[Check Total Exposure]
+    
+    CheckExposure --> ExposureCalc[Total Exposure = Sum(Position Values)]
+    ExposureCalc --> ExposureCheck{Exposure > Max?}
+    
+    ExposureCheck -->|Yes| ReduceExposure[Reduce Largest Positions]
+    ReduceExposure --> LogWarning
+    
+    ExposureCheck -->|No| Pass[Risk Check Passed]
+    
+    Pass --> Continue[Continue Trading]
+    
+    style Start fill:#e3f2fd
+    style Pass fill:#e8f5e8
+    style StopAll fill:#ffebee
+    style DrawdownStop fill:#ffebee
+    style ReducePosition fill:#fff3e0
+                    </div>
+                </div>
+            </div>
+
+            <div id="data" class="diagram-section">
+                <div class="diagram-header">
+                    <h2>8. Data Models Relationship</h2>
+                </div>
+                <div class="diagram-content">
+                    <div class="mermaid">
+erDiagram
+    Order {
+        string id PK
+        string client_id
+        string symbol
+        enum side
+        enum type
+        decimal quantity
+        decimal price
+        enum status
+        decimal filled_quantity
+        decimal average_price
+        datetime timestamp
+        datetime updated_at
+    }
+    
+    Position {
+        string symbol PK
+        enum side
+        decimal size
+        decimal entry_price
+        decimal mark_price
+        decimal unrealized_pnl
+        decimal realized_pnl
+        datetime timestamp
+    }
+    
+    Balance {
+        string asset PK
+        decimal free
+        decimal locked
+        datetime timestamp
+    }
+    
+    Trade {
+        string id PK
+        string order_id FK
+        string symbol
+        enum side
+        decimal quantity
+        decimal price
+        decimal fee
+        string fee_asset
+        datetime timestamp
+    }
+    
+    MarketData {
+        string symbol PK
+        decimal price
+        decimal bid
+        decimal ask
+        decimal volume_24h
+        decimal change_24h
+        datetime timestamp
+    }
+    
+    Strategy {
+        string id PK
+        string symbol
+        enum type
+        json config
+        bool enabled
+        datetime created_at
+        datetime updated_at
+    }
+    
+    Order ||--|| Trade : "generates"
+    Position ||--o{ Order : "affects"
+    Strategy ||--o{ Order : "creates"
+    Strategy ||--|| Position : "manages"
+    Balance ||--o{ Order : "constrains"
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#f9f9f9',
+                primaryTextColor: '#333',
+                primaryBorderColor: '#cccccc',
+                lineColor: '#666666',
+                secondaryColor: '#f0f0f0',
+                tertiaryColor: '#ffffff'
+            }
+        });
+    </script>
+</body>
+</html>

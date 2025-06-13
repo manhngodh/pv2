@@ -247,6 +247,28 @@ ruff src/ tests/
 
 Access the web interface at `http://localhost:8080` to monitor your trading activities.
 
+## 📚 Documentation & Architecture
+
+### 🎨 Visual Architecture
+All system diagrams and architectural documentation are organized in the [`docs/diagrams/`](./docs/diagrams/) folder:
+
+- **[📊 Interactive Diagrams](./docs/diagrams/diagrams.html)** - Open in browser for interactive exploration
+- **[🏗️ Complete Architecture Guide](./docs/diagrams/ARCHITECTURE.md)** - Comprehensive system documentation
+- **[⚡ Quick Reference](./docs/diagrams/QUICK_REFERENCE.md)** - Simplified flowcharts and overview
+- **[🏛️ C4 Architecture Model](./docs/diagrams/C4_ARCHITECTURE.md)** - Structured architecture views
+- **[📋 Diagram Index](./docs/diagrams/index.md)** - Easy navigation to all diagrams
+
+### 🔍 Component Documentation
+Individual component diagrams are available for detailed understanding:
+1. System Architecture - High-level overview
+2. Bot Lifecycle - Startup to shutdown processes  
+3. Configuration System - Config loading and validation
+4. Exchange Layer - API abstraction and integration
+5. Grid Strategy - Grid trading strategy logic
+6. DCA Strategy - Dollar cost averaging implementation
+7. Risk Management - Risk controls and position management
+8. Data Models - Core data structures and relationships
+
 ## 🤝 Contributing
 
 1. Fork the repository

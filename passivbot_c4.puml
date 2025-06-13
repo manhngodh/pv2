@@ -1,0 +1,169 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+' System Context Diagram
+LAYOUT_WITH_LEGEND()
+
+title System Context Diagram - Passivbot v2.0
+
+Person(trader, "Crypto Trader", "User who configures and monitors the automated trading bot")
+
+System(passivbot, "Passivbot v2.0", "Modular cryptocurrency trading bot with grid and DCA strategies")
+
+System_Ext(binance, "Binance Exchange", "Cryptocurrency exchange API")
+System_Ext(bybit, "Bybit Exchange", "Cryptocurrency exchange API") 
+System_Ext(telegram, "Telegram", "Notification service")
+System_Ext(discord, "Discord", "Notification service")
+
+Rel(trader, passivbot, "Configures strategies, monitors performance", "CLI/Web UI")
+Rel(passivbot, binance, "Places orders, gets market data", "REST API/WebSocket")
+Rel(passivbot, bybit, "Places orders, gets market data", "REST API/WebSocket")
+Rel(passivbot, telegram, "Sends notifications", "Bot API")
+Rel(passivbot, discord, "Sends notifications", "Webhook")
+
+@enduml
+
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Container Diagram - Passivbot v2.0
+
+Person(trader, "Crypto Trader", "Configures and monitors trading")
+
+System_Boundary(c1, "Passivbot System") {
+    Container(cli, "CLI Application", "Python/Typer", "Command-line interface for bot management")
+    Container(web, "Web Dashboard", "FastAPI/React", "Real-time monitoring and control interface") 
+    Container(bot, "Trading Bot Core", "Python/AsyncIO", "Main trading engine with strategies")
+    Container(db, "Database", "SQLite/PostgreSQL", "Stores trading history and configurations")
+    Container(config, "Configuration", "JSON/YAML", "Trading strategies and risk parameters")
+}
+
+System_Ext(exchanges, "Crypto Exchanges", "External trading APIs")
+System_Ext(notifications, "Notification Services", "Telegram, Discord")
+
+Rel(trader, cli, "Manages bot", "Commands")
+Rel(trader, web, "Monitors performance", "HTTPS")
+Rel(cli, bot, "Controls bot lifecycle", "Direct calls")
+Rel(web, bot, "Gets status, controls bot", "API calls")
+Rel(bot, db, "Reads/writes trading data", "SQL")
+Rel(bot, config, "Reads configuration", "File I/O")
+Rel(bot, exchanges, "Trading operations", "REST/WebSocket")
+Rel(bot, notifications, "Sends alerts", "API calls")
+
+@enduml
+
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram - Trading Bot Core
+
+Container(web, "Web Dashboard", "FastAPI", "Web monitoring interface")
+Container(cli, "CLI Application", "Python/Typer", "Command line interface")
+Container(db, "Database", "SQLite/PostgreSQL", "Data persistence")
+
+Container_Boundary(c1, "Trading Bot Core") {
+    Component(bot_controller, "Bot Controller", "PassivBot Class", "Main orchestrator managing bot lifecycle")
+    Component(config_manager, "Configuration Manager", "Pydantic Models", "Loads and validates configuration")
+    Component(risk_manager, "Risk Manager", "Risk Controller", "Monitors risk and implements safety stops")
+    
+    Component(exchange_manager, "Exchange Manager", "Exchange Registry", "Manages exchange connections")
+    Component(binance_impl, "Binance Implementation", "BinanceExchange", "Binance-specific API integration")
+    Component(bybit_impl, "Bybit Implementation", "BybitExchange", "Bybit-specific API integration")
+    
+    Component(strategy_manager, "Strategy Manager", "Strategy Registry", "Orchestrates trading strategies")
+    Component(grid_strategy, "Grid Strategy", "GridStrategy Class", "Grid trading algorithm")
+    Component(dca_strategy, "DCA Strategy", "DCAStrategy Class", "Dollar cost averaging algorithm")
+    
+    Component(order_manager, "Order Manager", "Order Controller", "Manages order lifecycle")
+    Component(position_tracker, "Position Tracker", "Position Monitor", "Tracks positions and P&L")
+    Component(market_data, "Market Data Handler", "Data Processor", "Processes market data")
+    Component(notification_service, "Notification Service", "Alert Manager", "Sends notifications")
+}
+
+System_Ext(exchanges, "External Exchanges", "Trading APIs")
+System_Ext(notifications, "External Notifications", "Telegram/Discord")
+
+Rel(cli, bot_controller, "Controls", "Method calls")
+Rel(web, bot_controller, "Status/Control", "API")
+Rel(bot_controller, config_manager, "Loads config", "Pydantic")
+Rel(bot_controller, risk_manager, "Risk checks", "Validation")
+Rel(bot_controller, exchange_manager, "Exchange ops", "Interface")
+Rel(bot_controller, strategy_manager, "Execute strategies", "Strategy calls")
+
+Rel(exchange_manager, binance_impl, "Binance calls", "Implementation")
+Rel(exchange_manager, bybit_impl, "Bybit calls", "Implementation")
+Rel(binance_impl, exchanges, "API calls", "REST/WS")
+Rel(bybit_impl, exchanges, "API calls", "REST/WS")
+
+Rel(strategy_manager, grid_strategy, "Execute grid", "Strategy pattern")
+Rel(strategy_manager, dca_strategy, "Execute DCA", "Strategy pattern")
+Rel(grid_strategy, order_manager, "Place orders", "Order ops")
+Rel(dca_strategy, order_manager, "Place orders", "Order ops")
+
+Rel(order_manager, exchange_manager, "Order operations", "Exchange interface")
+Rel(position_tracker, exchange_manager, "Position updates", "Data sync")
+Rel(market_data, exchange_manager, "Market updates", "WebSocket")
+Rel(notification_service, notifications, "Send alerts", "External API")
+
+Rel(bot_controller, db, "Persist data", "ORM")
+Rel(order_manager, db, "Save orders", "SQL")
+Rel(position_tracker, db, "Save positions", "SQL")
+
+@enduml
+
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+title Deployment Diagram - Passivbot v2.0
+
+Deployment_Node(user_machine, "User's Computer", "Windows/Mac/Linux") {
+    Deployment_Node(local_env, "Local Environment", "Python 3.11+") {
+        Container(cli_local, "Passivbot CLI", "Python", "Local bot instance")
+        Container(config_local, "Configuration Files", "JSON/YAML", "Trading parameters")
+    }
+}
+
+Deployment_Node(cloud_server, "Cloud Server", "Ubuntu 22.04 LTS") {
+    Deployment_Node(docker_env, "Docker Environment", "Docker Compose") {
+        Container(bot_prod, "Passivbot Service", "Python + SystemD", "Production bot instance")
+        Container(web_prod, "Web Dashboard", "FastAPI + Nginx", "Monitoring interface")
+        Container(db_prod, "Database", "PostgreSQL 15", "Trading data storage")
+    }
+    Deployment_Node(monitoring, "Monitoring Stack", "Observability") {
+        Container(logs, "Log Aggregation", "Structured Logs", "System monitoring")
+        Container(metrics, "Metrics Collection", "Prometheus", "Performance metrics")
+    }
+}
+
+Deployment_Node(exchanges_cloud, "Exchange Infrastructure", "Cloud Providers") {
+    Deployment_Node(binance_infra, "Binance Cloud", "AWS") {
+        Container(binance_api, "Binance API", "REST/WebSocket", "Trading operations")
+    }
+    Deployment_Node(bybit_infra, "Bybit Cloud", "AWS") {
+        Container(bybit_api, "Bybit API", "REST/WebSocket", "Trading operations")
+    }
+}
+
+Deployment_Node(notification_cloud, "Notification Services", "External APIs") {
+    Container(telegram_api, "Telegram Bot API", "HTTPS", "Alert notifications")
+    Container(discord_webhook, "Discord Webhook", "HTTPS", "Alert notifications")
+}
+
+Rel(cli_local, config_local, "Reads", "File I/O")
+Rel(bot_prod, db_prod, "Stores data", "PostgreSQL")
+Rel(web_prod, bot_prod, "API calls", "HTTP/JSON")
+Rel(bot_prod, logs, "Writes", "Syslog")
+Rel(bot_prod, metrics, "Publishes", "HTTP")
+
+Rel(cli_local, binance_api, "Trading", "HTTPS/WSS")
+Rel(bot_prod, binance_api, "Trading", "HTTPS/WSS")
+Rel(cli_local, bybit_api, "Trading", "HTTPS/WSS") 
+Rel(bot_prod, bybit_api, "Trading", "HTTPS/WSS")
+
+Rel(bot_prod, telegram_api, "Notifications", "HTTPS")
+Rel(bot_prod, discord_webhook, "Notifications", "HTTPS")
+
+@enduml
