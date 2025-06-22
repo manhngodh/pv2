@@ -38,10 +38,11 @@ class OrderStatus(str, Enum):
 class ExchangeType(str, Enum):
     """Supported exchanges."""
     BINANCE = "binance"
-    BYBIT = "bybit"
-    OKX = "okx"
     BINANCE_FUTURES = "binance_futures"
+    BYBIT = "bybit"
     BYBIT_FUTURES = "bybit_futures"
+    OKX = "okx"
+    SIMULATOR = "simulator"
 
 
 class StrategyType(str, Enum):
@@ -207,25 +208,55 @@ class Trade(BaseModel):
         return self.quantity * self.price
 
 
-class MarketData(BaseModel):
-    """Market data model."""
+class Ticker(BaseModel):
+    """Market ticker model."""
     symbol: str = Field(..., description="Trading symbol")
     price: Decimal = Field(..., gt=0, description="Current price")
     bid: Optional[Decimal] = Field(default=None, description="Best bid price")
     ask: Optional[Decimal] = Field(default=None, description="Best ask price")
-    volume_24h: Optional[Decimal] = Field(default=None, description="24h volume")
-    change_24h: Optional[Decimal] = Field(default=None, description="24h price change %")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Data timestamp")
-    
+    volume: Optional[Decimal] = Field(default=None, description="24h volume")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Ticker timestamp")
+
     class Config:
         json_encoders = {
             Decimal: str,
             datetime: lambda v: v.isoformat(),
         }
-    
-    @property
-    def spread(self) -> Optional[Decimal]:
-        """Get bid-ask spread."""
-        if self.bid is not None and self.ask is not None:
-            return self.ask - self.bid
-        return None
+
+
+class MarketData(BaseModel):
+    """Market data model for strategy calculations."""
+    symbol: str = Field(..., description="Trading symbol")
+    price: Decimal = Field(..., gt=0, description="Current price")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Data timestamp")
+    open: Optional[Decimal] = Field(default=None, description="Open price (candle)")
+    high: Optional[Decimal] = Field(default=None, description="High price (candle)")
+    low: Optional[Decimal] = Field(default=None, description="Low price (candle)")
+    close: Optional[Decimal] = Field(default=None, description="Close price (candle)")
+    volume: Optional[Decimal] = Field(default=None, description="Volume (candle)")
+    bid: Optional[Decimal] = Field(default=None, description="Best bid price")
+    ask: Optional[Decimal] = Field(default=None, description="Best ask price")
+
+    class Config:
+        json_encoders = {
+            Decimal: str,
+            datetime: lambda v: v.isoformat(),
+        }
+
+
+class Symbol(BaseModel):
+    """Trading symbol information."""
+    name: str = Field(..., description="Symbol name (e.g., BTCUSDT)")
+    base_asset: str = Field(..., description="Base asset (e.g., BTC)")
+    quote_asset: str = Field(..., description="Quote asset (e.g., USDT)")
+    price_precision: int = Field(..., description="Price precision (decimal places)")
+    quantity_precision: int = Field(..., description="Quantity precision (decimal places)")
+    min_quantity: Decimal = Field(..., description="Minimum order quantity")
+    min_notional: Decimal = Field(..., description="Minimum order value in quote asset")
+    tick_size: Decimal = Field(..., description="Minimum price movement")
+    step_size: Decimal = Field(..., description="Minimum quantity movement")
+
+    class Config:
+        json_encoders = {
+            Decimal: str,
+        }

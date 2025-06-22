@@ -43,6 +43,7 @@ class DCAStrategy(BaseStrategy):
         self._entry_price: Optional[Decimal] = None
         self._safety_order_count = 0
         self._initialized = False
+        self._position_size = Decimal("0")  # Track total position size
         
         logger.info(
             f"DCA strategy initialized: Base order {self.dca_config.base_order_size}, "
@@ -65,8 +66,8 @@ class DCAStrategy(BaseStrategy):
                 logger.warning(f"No market data available for {self.symbol}")
                 return
             
-            # Initialize DCA if not done
-            if not self._initialized:
+            # Initialize DCA if not done and no active position
+            if not self._initialized and self._position_size <= 0:
                 await self._initialize_dca()
                 self._initialized = True
             
@@ -155,8 +156,16 @@ class DCAStrategy(BaseStrategy):
             )
             
             if self._base_order:
-                self._entry_price = current_price  # Will be updated when order fills
-                logger.info(f"DCA base order placed: {base_quantity} at market price")
+                self._entry_price = current_price  # Use current price for market orders
+                self._position_size = base_quantity
+                logger.info(f"DCA base order placed: {base_quantity} at market price {current_price}")
+                logger.info(f"DCA position initialized: {self._position_size} BTC at ${self._entry_price}")
+                
+                # Place take profit order immediately
+                await self._place_take_profit_order()
+                
+                # Place first safety order
+                await self._place_safety_orders()
         
         except Exception as e:
             logger.error(f"Failed to place DCA base order: {e}")
@@ -166,20 +175,23 @@ class DCAStrategy(BaseStrategy):
         # Check base order status
         if self._base_order and self._base_order.id:
             updated_order = await self.exchange.get_order(self._base_order.id, self.symbol)
-            if updated_order and updated_order.is_filled:
+            if updated_order and updated_order.is_filled and self._base_order.status != OrderStatus.FILLED:
+                self._base_order.status = OrderStatus.FILLED  # Mark as handled
                 await self._handle_base_order_fill(updated_order)
         
         # Check safety orders
         for i, safety_order in enumerate(self._safety_orders):
             if safety_order.id:
                 updated_order = await self.exchange.get_order(safety_order.id, self.symbol)
-                if updated_order and updated_order.is_filled:
+                if updated_order and updated_order.is_filled and safety_order.status != OrderStatus.FILLED:
+                    safety_order.status = OrderStatus.FILLED  # Mark as handled
                     await self._handle_safety_order_fill(updated_order, i)
         
         # Check take profit order
         if self._take_profit_order and self._take_profit_order.id:
             updated_order = await self.exchange.get_order(self._take_profit_order.id, self.symbol)
-            if updated_order and updated_order.is_filled:
+            if updated_order and updated_order.is_filled and self._take_profit_order.status != OrderStatus.FILLED:
+                self._take_profit_order.status = OrderStatus.FILLED  # Mark as handled
                 await self._handle_take_profit_fill(updated_order)
         
         # Place new safety orders if needed
@@ -193,7 +205,8 @@ class DCAStrategy(BaseStrategy):
         """
         if filled_order.average_price:
             self._entry_price = filled_order.average_price
-            logger.info(f"DCA base order filled at {self._entry_price}")
+            self._position_size = filled_order.quantity
+            logger.info(f"DCA base order filled at {self._entry_price}, position: {self._position_size}")
             
             # Place take profit order
             await self._place_take_profit_order()
@@ -210,8 +223,9 @@ class DCAStrategy(BaseStrategy):
         """
         logger.info(f"DCA safety order {order_index + 1} filled at {filled_order.average_price}")
         self._safety_order_count += 1
+        self._position_size += filled_order.quantity
         
-        # Update average entry price
+        # Update average entry price (weighted average would be more accurate)
         if filled_order.average_price and self._entry_price:
             # Simplified average calculation (should track total quantity and cost)
             self._entry_price = (self._entry_price + filled_order.average_price) / Decimal("2")
@@ -237,21 +251,21 @@ class DCAStrategy(BaseStrategy):
         # Reset DCA state
         await self._reset_dca_state()
         
-        # Start new DCA cycle
-        self._initialized = False
+        # Don't start new cycle immediately - let strategy decide
+        logger.info(f"DCA cycle completed with profit of {filled_order.average_price - self._entry_price if self._entry_price else 0}")
     
     async def _place_take_profit_order(self) -> None:
         """Place take profit order."""
-        if not self._entry_price:
+        if not self._entry_price or not self._base_order:
             return
         
-        # Get current position to determine sell quantity
-        base_asset = self.symbol.replace("USDT", "")[:3]
-        base_balance = await self.get_balance(base_asset)
+        # Use the actual quantity from the base order, not entire balance
+        base_quantity = self._base_order.quantity
         
-        if not base_balance or base_balance.free <= 0:
-            logger.warning("No base asset balance for take profit order")
-            return
+        # Add any filled safety orders to the quantity
+        for safety_order in self._safety_orders:
+            if safety_order.status == OrderStatus.FILLED:
+                base_quantity += safety_order.quantity
         
         # Calculate take profit price
         take_profit_multiplier = Decimal("1") + (self.dca_config.take_profit_percentage / Decimal("100"))
@@ -261,12 +275,12 @@ class DCAStrategy(BaseStrategy):
             self._take_profit_order = await self.place_order(
                 side=OrderSide.SELL,
                 order_type=OrderType.LIMIT,
-                quantity=base_balance.free,
+                quantity=base_quantity,
                 price=take_profit_price
             )
             
             if self._take_profit_order:
-                logger.info(f"Take profit order placed at {take_profit_price}")
+                logger.info(f"Take profit order placed for {base_quantity} at {take_profit_price}")
         
         except Exception as e:
             logger.error(f"Failed to place take profit order: {e}")
@@ -354,6 +368,8 @@ class DCAStrategy(BaseStrategy):
         self._take_profit_order = None
         self._entry_price = None
         self._safety_order_count = 0
+        self._position_size = Decimal("0")
+        self._initialized = False
         
         logger.info("DCA state reset")
     

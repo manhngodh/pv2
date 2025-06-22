@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 import asyncio
 import logging
 from datetime import datetime
+import traceback
 
 from ..core.config import StrategyConfig
 from ..core.types import Order, Position, Balance, MarketData, OrderSide, OrderType
@@ -52,7 +53,7 @@ class BaseStrategy(ABC):
     @property
     def strategy_type(self) -> str:
         """Get strategy type."""
-        return self.config.type.value
+        return str(self.config.type)
     
     @abstractmethod
     async def execute(self) -> None:
@@ -131,11 +132,13 @@ class BaseStrategy(ABC):
             if order.id:
                 self._orders[order.id] = order
             
-            logger.info(f"Placed {side.value} order {order.id} for {quantity} {self.symbol}")
+            # Use string representation of side regardless of its type
+            side_str = side if isinstance(side, str) else side.value
+            logger.info(f"Placed {side_str} order {order.id} for {quantity} {self.symbol}")
             return order
             
         except Exception as e:
-            logger.error(f"Failed to place order: {e}")
+            logger.error(f"Failed to place order: {e}. \n {traceback.format_exc()}")
             raise StrategyExecutionError(f"Failed to place order: {e}")
     
     async def cancel_order(self, order_id: str) -> bool:

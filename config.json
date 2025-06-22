@@ -1,0 +1,34 @@
+
+{
+  "log_level": "INFO",
+  "data_path": "/data",
+  "exchanges": {
+    "binance_testnet": {
+      "type": "binance",
+      "api_key": "YOUR_API_KEY",
+      "api_secret": "YOUR_API_SECRET",
+      "testnet": true
+    }
+  },
+  "bots": [
+    {
+      "name": "MyGridBot",
+      "exchange": "binance_testnet",
+      "symbol": "BTC/USDT",
+      "strategy": {
+        "type": "grid",
+        "grid": {
+          "num_levels": 50,
+          "quantity_percentage": 1.0,
+          "price_spacing_percentage": 0.5,
+          "lower_price": 20000,
+          "upper_price": 30000,
+          "rebalance_threshold": 5.0
+        }
+      },
+      "risk": {
+        "max_position_size": 1000.0
+      }
+    }
+  ]
+}
